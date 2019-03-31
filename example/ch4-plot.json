@@ -1,0 +1,22 @@
+{
+    "name":"CH4",
+    "hftype":"rhf",
+    "basis_set":"sto-3g",
+    "atoms":[
+            "C","H","H","H","H"
+        ],
+    "coords":
+        [[0,0,0],
+        [0,0,2.05],
+        [1.9327,0,-0.6833],
+        [-0.9664,1.6738,-0.6833],
+        [-0.9664,-1.6738,-0.6833]]
+    ,
+    "charge":0,
+    "n_single_electron":0,
+    "n_step":500,
+    "post_analysis":[
+        "orbital-energy",
+        "plot"
+    ]
+}

@@ -1,0 +1,26 @@
+{
+    "name":"H2",
+    "hftype":"rhf",
+    "basis_set":"sto-3g",
+    "atoms":[
+            "H","H"
+        ],
+    "coords":
+        [[0,0,0],
+        [1.4,0,0]]
+    ,
+    "charge":0,
+    "n_single_electron":0,
+    "n_step":500,
+    "post_analysis":[
+        "orbital-energy",
+        "density-matrix",
+        "charge-muliken"
+    ],
+    "scan":{
+        "enable":false,
+        "2,1":"x",
+        "x":[0.6,3.0,0.2]
+    },
+    "verbose":"minimal"
+}
