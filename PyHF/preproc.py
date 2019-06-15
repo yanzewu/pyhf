@@ -60,13 +60,17 @@ def read_input(fp):
         sprint.SPrinter.global_level = str2level[data['verbose']]
 
     # Post analysis
-    post_opts = data.get('post_analysis', [])
-    assert isinstance(post_opts, list)
+    post_opts = data.get('post_analysis', {})
 
     # Generating scanning options
     scan_kwargs = None
     if 'scan' in data and data['scan'].get('enable', True) == True:
        
+        try:
+            data['scan'].pop('enable', None)
+        except KeyError:
+            pass
+
         repl_coord = []
         repl_expr = []
         var_list = {}

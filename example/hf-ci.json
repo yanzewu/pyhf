@@ -1,0 +1,21 @@
+{
+    "name":"HF",
+    "hftype":"rhf",
+    "basis_set":"sto-3g",
+    "atoms":[
+            "H","F"
+        ],
+    "coords":
+        [[0,0,1.8],
+        [0,0,0]]
+    ,
+    "charge":0,
+    "n_single_electron":0,
+    "n_step":500,
+    "post_analysis":{
+        "orbital-energy":true,
+        "ci":true,
+        "ci_degeneracy":"st"
+    },
+    "verbose":"full"
+}

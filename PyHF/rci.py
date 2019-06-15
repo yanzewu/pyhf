@@ -10,18 +10,12 @@ class MolOrbital:
         self.formula = formula
         self.spinup = spinup
 
-    def set_spin(self, spinup):
-        self.spinup = spinup
-
     def spin_combinations(self):
         spin_orbitals = []
         for i in range(2**len(self.formula)):
             newspin = tuple((s == '0' for s in bin(i)[2:]))
             spin_orbitals.append(MolOrbital(self.formula, newspin))
         return spin_orbitals
-
-    def has_spin(self):
-        return self.spinup != None
 
     def level(self):
         return len(self.formula)//2
@@ -65,25 +59,21 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
 
     # WARNING: Only works for single excitations
 
-    def _H_ss(mo1, mo2, h_so, v_so):
+    def _V2e(p, q):
+        return np.sum((2*np.diag(v_so[p,q,:,:]) - np.diag(v_so[p,:,:,q]))[:n_filled_orbital])
+
+    def _H_ss(mo1, mo2):    # H term between 2 single excitations
 
         H0 = 0.0
         s1 = mo1.spatial
         s2 = mo2.spatial
 
         if s1[0] == s2[0]:
-            H0 += h_so[s1[1], s2[1]]
-            for m in range(n_filled_orbital):
-                H0 += 2*v_so[s1[1], s2[1], m, m] - v_so[s1[1], m, m, s2[1]]
-                
+            H0 += h_so[s1[1], s2[1]] + _V2e(s1[1], s2[1])           
         if s1[1] == s2[1]:
-            H0 -= h_so[s2[0], s1[0]]
-            for m in range(n_filled_orbital):
-                H0 -= 2*v_so[s2[0], s1[0], m, m] - v_so[s2[0], m, m, s1[0]]
-                
-        # HF energy
+            H0 -= h_so[s2[0], s1[0]] + _V2e(s2[0], s1[0])
         if s1 == s2:
-            H0 += E0
+            H0 += E0    # HF energy
 
         # spin part
         if mo1.degen != mo2.degen:
@@ -97,12 +87,8 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
 
     N = C.shape[0]
 
-    h_so = np.zeros((N, N))
+    h_so = C.T.dot(h.dot(C))    # should be conjugate transpose
     v_so = np.zeros((N, N, N, N))
-
-    for i in range(N):
-        for j in range(N):
-            h_so[i, j] = C[:, i].T.dot(h.dot(C[:, j]))
 
     for i in range(N):
         for j in range(N):
@@ -111,18 +97,11 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
                 for l in range(N):
                     vij[k, l] = C[:, i].T.dot(v[:,:,k,l].dot(C[:, j]))
 
-            for k in range(N):
-                for l in range(N):
-                    v_so[i, j, k, l] = C[:, k].T.dot(vij.dot(C[:, l]))
+            v_so[i, j, :, :] = C.T.dot(vij.dot(C))
 
 
     # Hartree Fock Energy
-    E0 = 0.0
-    for i in range(n_filled_orbital):
-        E0 += 2*h_so[i, i]
-    for i in range(n_filled_orbital):
-        for j in range(n_filled_orbital):
-            E0 += 2*v_so[i,i,j,j] - v_so[i,j,j,i]
+    E0 = 2*np.sum(np.diag(h_so)[:n_filled_orbital]) + sum(_V2e(i, i) for i in range(n_filled_orbital))
 
     # full Hamiltonian
 
@@ -132,7 +111,7 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
         for j in range(i+1):
   
             if mixed_mol_orbitals[i].level() == 1 and mixed_mol_orbitals[j].level() == 1:
-                H[i, j] = _H_ss(mixed_mol_orbitals[i], mixed_mol_orbitals[j], h_so, v_so)
+                H[i, j] = _H_ss(mixed_mol_orbitals[i], mixed_mol_orbitals[j])
             elif mixed_mol_orbitals[i].level() == 0 and mixed_mol_orbitals[j].level() == 1:
                 pass    # Brillouin Theorem
             elif mixed_mol_orbitals[i].level() == 1 and mixed_mol_orbitals[j].level() == 1:

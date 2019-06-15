@@ -28,15 +28,24 @@ def total_energy_uhf(E, E_core, n, atom_coords, atom_charges):
     return (np.sum((E[0]+E_core[0])[:n[0]]) + np.sum((E[1]+E_core[1])[:n[1]]))/2 + nuclear_energy(atom_coords, atom_charges)
 
 
+def density_matrix_general(C, orbitals):
+    D = np.zeros_like(C)
+
+    for i in range(C.shape[0]):
+        for j in range(C.shape[1]):
+            D[i, j] = sum([C[i, n]*C[j, n] for n in orbitals])
+
+    return D
+
 def density_matrix(C, n_orbital):
     """ Returns the density matrix D of state matrix. Simply a wrapper of
         roothann.build_density_mat()
     """
 
     if type(C) is tuple:
-        return roothaan.build_density_mat(C[0], n_orbital[0]), roothaan.build_density_mat(C[1], n_orbital[1])
+        return density_matrix_general(C[0], range(n_orbital[0])), build_density_mat(C[1], range(n_orbital[1]))
     else:
-        return 2*roothaan.build_density_mat(C, n_orbital)
+        return density_matrix_general(C, range(n_orbital))
 
 
 def muliken(P, atom_charges):
@@ -76,7 +85,7 @@ def analyze_hf(hftype, *args, **kwargs):
         raise ValueError(hftype)
 
 
-def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
+def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options={}):
     """ Analyze and print the result of RHF.
     Args:
         E, E_core, C, S, n_orbital, bases: The output of rhf();
@@ -134,8 +143,8 @@ def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charg
 
     if 'ci' in options:
         
-        cioutput = rci.rci(n_orbital, C, S, h, v)
-        cipostproc.analyze_rci(cioutput, C, bases)
+        cioutput = rci.rci(n_orbital, C, S, h, v, options.get('ci_level', 's'), options.get('ci_degeneracy', 'st'))
+        cipostproc.analyze_rci(cioutput, C, bases, E_nu)
 
 
 def analyze_uhf(E, E_core, C, S, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):

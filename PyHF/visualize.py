@@ -52,12 +52,7 @@ def plot_orbital_list(orbital_idx, C, bases, postfix='', **kwargs):
             plot_orbital(C[:,i-1], bases, color=cm.tab10(j)[:3], **kwargs)
             mlab.text(0.05, 0.1*j, str(i) + postfix, width=0.2, color=cm.tab10(j)[:3])
 
-
-def plot_charge_density(C, bases, n_orbital, atom_ext=2.0, sample_step=0.1, contour=0.01):
-
-    D = postproc.density_matrix(C, n_orbital)
-    if isinstance(D, tuple):
-        D = D[0] + D[1]
+def plot_charge_density(D, bases, atom_ext=2.0, sample_step=0.1, contour=0.01):
 
     X,Y,Z = _creating_mesh(np.array([b.origin for b in bases]), atom_ext, sample_step)
     
@@ -151,7 +146,10 @@ def ui_plot(hftype, C, bases, n_orbital, atom_charges, atom_coords, name=''):
             plot_backbone(atom_charges, atom_coords)
 
             if cmd == 'charge':
-                plot_charge_density(C, bases, n_orbital, **_plotargs)
+                D = postproc.density_matrix(C, n_orbital)
+                if isinstance(D, tuple):
+                    D = D[0] + D[1]
+                plot_charge_density(D, bases, **_plotargs)
 
             else:
 
