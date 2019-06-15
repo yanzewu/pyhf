@@ -139,7 +139,7 @@ def rhf(atom_charges, atom_coords, net_charge=0, basis_set='sto-3g', C_init=None
     # calculating core energy
     E_core = np.array([C[:,i].T.dot(h.dot(C[:,i])) for i in range(len(bases))])
 
-    return E, E_core, C, S, n_orbital, bases
+    return E, E_core, C, S, h, v, n_orbital, bases
 
 
 def uhf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto-3g', C_init=None, n_step=500, atol=1e-7, rtol=1e-5, mr=0.5, printer=_default_printer):

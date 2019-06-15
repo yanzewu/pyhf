@@ -4,7 +4,8 @@
 import numpy as np
 from . import roothaan
 from . import visualize
-
+from . import rci
+from . import cipostproc
 
 
 def nuclear_energy(atom_coords, atom_charges):
@@ -75,7 +76,7 @@ def analyze_hf(hftype, *args, **kwargs):
         raise ValueError(hftype)
 
 
-def analyze_rhf(E, E_core, C, S, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
+def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
     """ Analyze and print the result of RHF.
     Args:
         E, E_core, C, S, n_orbital, bases: The output of rhf();
@@ -130,6 +131,11 @@ def analyze_rhf(E, E_core, C, S, n_orbital, bases, atom_coords, atom_charges, na
 
     if 'plot' in options:
         visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
+
+    if 'ci' in options:
+        
+        cioutput = rci.rci(n_orbital, C, S, h, v)
+        cipostproc.analyze_rci(cioutput, C, bases)
 
 
 def analyze_uhf(E, E_core, C, S, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
