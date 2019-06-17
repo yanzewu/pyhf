@@ -5,7 +5,7 @@ from . import rci
 from . import integration
 
 
-def soc_rci_Hamiltonian(mixed_mol_orbitals, C, L):
+def rci_soc_Hamiltonian(mixed_mol_orbitals, C, L):
     
     # WARNING: Only works for single excitation
 
@@ -58,8 +58,6 @@ def soc_rci_Hamiltonian(mixed_mol_orbitals, C, L):
     Ly_so = C.T.dot(Ly.dot(C))
     Lz_so = C.T.dot(Lz.dot(C))
 
-    # construct 
-
     H = np.zeros((len(mixed_mol_orbitals), len(mixed_mol_orbitals)), dtype=complex)
 
     for i in range(len(mixed_mol_orbitals)):
@@ -78,7 +76,7 @@ def soc_rci_Hamiltonian(mixed_mol_orbitals, C, L):
     return H
 
 
-def rcis_with_soc(n_filled_orbital, C, s, h, v, bases, atom_coords, atom_charges):
+def rcis_with_soc(n_filled_orbital, C, S, h, v, bases, atom_coords, atom_charges):
     
     # Create L matrices first
     Lx = np.zeros((len(bases), len(bases)), dtype=complex)
@@ -96,32 +94,26 @@ def rcis_with_soc(n_filled_orbital, C, s, h, v, bases, atom_coords, atom_charges
 
     mol_orbitals = rci.orbital_pairs_rci(C.shape[0], n_filled_orbital, 's')
     mixed_mol_orbitals = rci.adapt_spin_rci(mol_orbitals, include_degen=True)
-
     mixed_mol_orbitals = rci.sort_orbital_by_degen(mixed_mol_orbitals)
 
-    Hsoc = soc_rci_Hamiltonian(mixed_mol_orbitals, C, (Lx, Ly, Lz))
-    print(Hsoc)
-    return
+    Hsoc = rci_soc_Hamiltonian(mixed_mol_orbitals, C, L)
+    Hel = rci.rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v)
 
-    H_full = np.zeros((len(mixed_mol_orbitals, len(mixed_mol_orbitals))), dtype=complex)
-
-    # Create original H
-    orbital_groups = rci.group_orbitals_by_degen(mixed_mol_orbitals)
-    H_singlet = rci.create_rci_Hamiltonian(orbital_groups[0], n_filled_orbital, C, h, v)
-    H_triplet = rci.create_rci_Hamiltonian(orbital_groups[2], n_filled_orbital, C, h, v)
-
-    Ns = len(orbital_groups[0])
-    Nt = len(orbital_groups[2])
-
-    assert len(H_full) == Ns + 3*Nt
-
-    H_full[:Ns, :Ns] = H_singlet
-    H_full[Ns:Ns+Nt,Ns:Ns+Nt] = H_triplet
-    H_full[Ns+Nt:Ns+2*Nt,Ns+Nt:Ns+2*Nt] = H_triplet
-    H_full[Ns+2*Nt:Ns+3*Nt,Ns+2*Nt:Ns+3*Nt] = H_triplet
-
-    H_full += soc_rci_Hamiltonian(mixed_mol_orbitals, C, L)
+    Hfull = Hel - Hsoc*0.25/137.036**2
+    return [rci.diagonalize(None, Hfull, mixed_mol_orbitals)]
     
+    # _, E, V, _ = rci.diagonalize(None, Hel)
+    # Hsoc_later = V.T.dot(Hsoc.dot(V))
+
+    # cnt1, cnt3 = 0, 0.0
+    # for i in range(1, len(V)):
+    #     idx = np.argmax(V[:,i])
+    #     d = mixed_mol_orbitals[idx].degen
+    #     print('%s%d%s' % ('S' if d == 1 else 'T', cnt1+1 if d == 1 else int(cnt3)+1, ' (ms=%d)'%mixed_mol_orbitals[idx].ms if d == 3 else ''))
+    #     if d == 1: cnt1 += 1
+    #     else: cnt3 += 1/3
+
+    # print('\n'.join(('\t'.join(('%.2f%s%.2fi'%(Hsoc_later[i,j].real, '+' if Hsoc_later[i,j].imag >=0.0 else '', Hsoc_later[i,j].imag) for j in range(len(Hsoc))))) for i in range(len(Hsoc))))
 
 
 def orbital_angular_momentum(lhs, rhs, atom_coords, atom_charges):

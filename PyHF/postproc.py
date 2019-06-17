@@ -141,9 +141,14 @@ def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charg
     if 'plot' in options:
         visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
 
-    if 'ci' in options:
+    if 'ci' in options and options['ci']:
         
         cioutput = rci.rci(n_orbital, C, S, h, v, options.get('ci_level', 's'), options.get('ci_degeneracy', 'st'))
+        cipostproc.analyze_rci(cioutput, C, bases, E_nu)
+
+    if 'cis-soc' in options and options['cis-soc']:
+        from . import soc
+        cioutput = soc.rcis_with_soc(n_orbital, C, S, h, v, bases, atom_coords, atom_charges)
         cipostproc.analyze_rci(cioutput, C, bases, E_nu)
 
 

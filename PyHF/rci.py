@@ -57,7 +57,7 @@ def orbital_pairs_rci(n_orbital, n_filled_orbital, level='s'):
     return mol_orbitals
 
 
-def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
+def rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
     """ Generate Hamiltonian for restricted CI;
     mol_orbitals: tuple representing excitation;
     """
@@ -68,6 +68,12 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
         return np.sum((2*np.diag(v_so[p,q,:,:]) - np.diag(v_so[p,:,:,q]))[:n_filled_orbital])
 
     def _H_ss(mo1, mo2):    # H term between 2 single excitations
+        
+        if mo1.degen != mo2.degen:
+            return 0.0
+
+        if mo1.ms != mo2.ms:
+            return 0.0
 
         H0 = 0.0
         s1 = mo1.spatial
@@ -81,9 +87,7 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
             H0 += E0    # HF energy
 
         # spin part
-        if mo1.degen != mo2.degen:
-            return H0
-        elif mo1.degen == 3:
+        if mo1.degen == 3:
             return H0 - v_so[s1[1], s2[1], s2[0], s1[0]]
         elif mo1.degen == 1:
             return H0 + 2*v_so[s1[1], s1[0], s2[0], s2[1]] - v_so[s1[1], s2[1], s2[0], s1[0]]
@@ -152,30 +156,50 @@ def adapt_spin_rci(mol_orbitals, include_degen=False):
 
 def group_orbitals_by_degen(mixed_mol_orbitals):
 
-    return [[m for m in mixed_mol_orbitals if m.degen == i] for i in range(4)]
+    return [[m for m in mixed_mol_orbitals if m.degen == i+1] for i in range(4)]
 
 def sort_orbital_by_degen(mixed_mol_orbitals):
 
     return sorted(mixed_mol_orbitals, key=lambda x:x.degen*10+x.ms)
 
-def rci(n_filled_orbital, C, S, h, v, level='s', degeneracy='st'):
+def diagonalize(name, matrix, *outputs, **kwargs):
+    
+    E, V = np.linalg.eigh(matrix)
+
+    return (name, E, V, matrix) + outputs
+
+
+def rci(n_filled_orbital, C, S, h, v, level='s', degeneracy='st', external_flags=None):
+    """ Performing restricted configuration interaction calculation (RCI).
+    Args:
+        n_filled_orbital: Number of orbitals filled;
+        C: HF coefficient of basis;
+        S, h, v: Integrals;
+        level: 's'/'d'/'sd';
+        degeneracy: 's'/'t'/'st'/'full'
+    """
 
     mol_orbitals = orbital_pairs_rci(C.shape[0], n_filled_orbital, level)   # mol orbitals with no spin
-    mixed_mol_orbitals = adapt_spin_rci(mol_orbitals)
+
+    dtasks = []
 
     if degeneracy == 'full':
-        pass
+        mixed_mol_orbitals = adapt_spin_rci(mol_orbitals, include_degen=True)
+        mixed_mol_orbitals = sort_orbital_by_degen(mixed_mol_orbitals)
 
-    orbital_groups = group_orbitals_by_degen(mixed_mol_orbitals)
-    degen2idx = {'s':0, 'd':1, 't':2}
+        H = rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v)
+        dtasks.append((None, H, mixed_mol_orbitals))
+        
+    else:
 
-    datasets = []
+        mixed_mol_orbitals = adapt_spin_rci(mol_orbitals)
+        orbital_groups = group_orbitals_by_degen(mixed_mol_orbitals)
+        degen2idx = {'s':0, 'd':1, 't':2}
 
-    for d in degeneracy:
-        idx = degen2idx[d]
-        H = create_rci_Hamiltonian(orbital_groups[idx+1], n_filled_orbital, C, h, v)
-        [E, V] = np.linalg.eigh(H)
-        datasets.append((d, E, V, orbital_groups[idx+1]))
+        for d in degeneracy:
+            idx = degen2idx[d]
+            H = rci_Hamiltonian(orbital_groups[idx], n_filled_orbital, C, h, v)
+            dtasks.append((d, H, orbital_groups[idx]))
 
-    return datasets
+    return [diagonalize(*task) for task in dtasks]
 
