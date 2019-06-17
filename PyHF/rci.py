@@ -2,6 +2,8 @@
 import numpy as np
 import scipy as sp
 
+import itertools
+
 class MolOrbital:
     """ Representation of an excited molecular orbital;
     """
@@ -12,20 +14,23 @@ class MolOrbital:
 
     def spin_combinations(self):
         spin_orbitals = []
-        for i in range(2**len(self.formula)):
-            newspin = tuple((s == '0' for s in bin(i)[2:]))
+
+        for o in itertools.product('01', repeat=len(self.formula)):
+            newspin = tuple((s == '0' for s in o))
             spin_orbitals.append(MolOrbital(self.formula, newspin))
         return spin_orbitals
 
     def level(self):
         return len(self.formula)//2
 
+
 class MixedMolOrbital:
     """ Molecular orbital with mixed spin
     """
     
-    def __init__(self, degen, *mol_orbitals):
+    def __init__(self, degen, ms, *mol_orbitals):
         self.degen = degen
+        self.ms = ms
         self.spatial = mol_orbitals[0].formula
         self.spins = []
         self.coeff = np.zeros(len(mol_orbitals)//2)
@@ -124,7 +129,7 @@ def create_rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v):
     return H
 
 
-def adapt_spin_rci(mol_orbitals):
+def adapt_spin_rci(mol_orbitals, include_degen=False):
     """ Expand the Hamiltonian, put spin in
     """
     # WARNING: Only works for single excitations.
@@ -132,13 +137,15 @@ def adapt_spin_rci(mol_orbitals):
     mixed_orbitals = []
     for m in mol_orbitals:
         if m.level() == 0:
-            mixed_orbitals.append(MixedMolOrbital(1, m, 1.0))
+            mixed_orbitals.append(MixedMolOrbital(1, 0, m, 1.0))
         sc = m.spin_combinations()
         if m.level() == 1:
-            mixed_orbitals.append(MixedMolOrbital(1, sc[0], np.sqrt(0.5), sc[3], np.sqrt(0.5)))
-            mixed_orbitals.append(MixedMolOrbital(3, sc[0], np.sqrt(0.5), sc[3], -np.sqrt(0.5)))
-#            mixed_orbitals.append(MixedMolOrbital(3, sc[1], 1.0))
-#            mixed_orbitals.append(MixedMolOrbital(3, sc[2], 1.0))
+            mixed_orbitals.append(MixedMolOrbital(1, 0, sc[0], np.sqrt(0.5), sc[3], np.sqrt(0.5)))
+            mixed_orbitals.append(MixedMolOrbital(3, 0, sc[0], np.sqrt(0.5), sc[3], -np.sqrt(0.5)))
+
+            if include_degen:
+                mixed_orbitals.append(MixedMolOrbital(3, -1, sc[1], 1.0))
+                mixed_orbitals.append(MixedMolOrbital(3, 1, sc[2], 1.0))
 
     return mixed_orbitals
 
@@ -147,6 +154,9 @@ def group_orbitals_by_degen(mixed_mol_orbitals):
 
     return [[m for m in mixed_mol_orbitals if m.degen == i] for i in range(4)]
 
+def sort_orbital_by_degen(mixed_mol_orbitals):
+
+    return sorted(mixed_mol_orbitals, key=lambda x:x.degen*10+x.ms)
 
 def rci(n_filled_orbital, C, S, h, v, level='s', degeneracy='st'):
 
