@@ -141,6 +141,12 @@ def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charg
     if 'plot' in options:
         visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
 
+    if 'mp2' in options:
+        from . import mppt
+        Ecorr = mppt.rmp2_energy(n_orbital, C, v, E)
+        print('MP2 Correlation Energy =\t%g' % Ecorr)
+        print('MP2 Total Energy =\t%g' % (E_ele + E_nu + Ecorr))
+
     if 'ci' in options and options['ci']:
         
         cioutput = rci.rci(n_orbital, C, S, h, v, **options.get('ci_kwargs', {}))

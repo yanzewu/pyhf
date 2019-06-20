@@ -42,18 +42,21 @@ class MixedMolOrbital:
         return len(self.spatial)//2
 
 
-def orbital_pairs_rci(n_orbital, n_filled_orbital, level='s'):
+def orbital_pairs_rci(n_orbital, n_filled_orbital, level='s', include_ground=True):
     """ Create orbital tuples;
         n_orbital and n_filled_orbital refer to spatial orbital.
         level = 's'/'d'/'sd' (single/double/single+double)
     """
-    mol_orbitals = [MolOrbital()]
+    mol_orbitals = []
+    if include_ground:
+        mol_orbitals.append(MolOrbital())
+
     for l in level:
         if l == 's':
             mol_orbitals += [MolOrbital((i, a)) for i in range(n_filled_orbital) for a in range(n_filled_orbital, n_orbital)]
         elif l == 'd':
-            mol_orbitals += [MolOrbital((i1, i2, a1, a2)) for i1 in range(n_filled_orbital) for i2 in range(i1) \
-                for a1 in range(n_filled_orbital, n_orbital) for a2 in range(n_filled_orbital, a1)]
+            mol_orbitals += [MolOrbital((i1, i2, a1, a2)) for i1 in range(n_filled_orbital) for i2 in range(i1+1) \
+                for a1 in range(n_filled_orbital, n_orbital) for a2 in range(n_filled_orbital, a1+1)]
     return mol_orbitals
 
 
