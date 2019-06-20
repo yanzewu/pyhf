@@ -14,10 +14,9 @@
     "n_step":500,
     "post_analysis":{
         "orbital-energy":true,
-        "ci":true,
-        "ci_kwargs":{
-            "level":"s",
-            "degeneracy":"st"
+        "cis-soc":true,
+        "cis-soc_kwargs":{
+            "n_roots":10
         }
     },
     "verbose":"full"

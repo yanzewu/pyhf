@@ -143,12 +143,12 @@ def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charg
 
     if 'ci' in options and options['ci']:
         
-        cioutput = rci.rci(n_orbital, C, S, h, v, options.get('ci_level', 's'), options.get('ci_degeneracy', 'st'))
+        cioutput = rci.rci(n_orbital, C, S, h, v, **options.get('ci_kwargs', {}))
         cipostproc.analyze_rci(cioutput, C, bases, E_nu)
 
     if 'cis-soc' in options and options['cis-soc']:
         from . import soc
-        cioutput = soc.rcis_with_soc(n_orbital, C, S, h, v, bases, atom_coords, atom_charges)
+        cioutput = soc.rcis_with_soc(n_orbital, C, S, h, v, bases, atom_coords, atom_charges, **options.get('cis-soc_kwargs', {}))
         cipostproc.analyze_rci(cioutput, C, bases, E_nu)
 
 

@@ -164,12 +164,16 @@ def sort_orbital_by_degen(mixed_mol_orbitals):
 
 def diagonalize(name, matrix, *outputs, **kwargs):
     
-    E, V = np.linalg.eigh(matrix)
+    eigvals = kwargs.get('n_roots', None)
+    if eigvals:
+        eigvals = (0, eigvals)
+
+    E, V = sp.linalg.eigh(matrix, eigvals=eigvals)
 
     return (name, E, V, matrix) + outputs
 
 
-def rci(n_filled_orbital, C, S, h, v, level='s', degeneracy='st', external_flags=None):
+def rci(n_filled_orbital, C, S, h, v, level='s', degeneracy='st', n_roots=None, external_flags=None):
     """ Performing restricted configuration interaction calculation (RCI).
     Args:
         n_filled_orbital: Number of orbitals filled;
@@ -201,5 +205,5 @@ def rci(n_filled_orbital, C, S, h, v, level='s', degeneracy='st', external_flags
             H = rci_Hamiltonian(orbital_groups[idx], n_filled_orbital, C, h, v)
             dtasks.append((d, H, orbital_groups[idx]))
 
-    return [diagonalize(*task) for task in dtasks]
+    return [diagonalize(*task, n_roots=n_roots) for task in dtasks]
 

@@ -76,7 +76,7 @@ def rci_soc_Hamiltonian(mixed_mol_orbitals, C, L):
     return H
 
 
-def rcis_with_soc(n_filled_orbital, C, S, h, v, bases, atom_coords, atom_charges):
+def rcis_with_soc(n_filled_orbital, C, S, h, v, bases, atom_coords, atom_charges, n_roots=None):
     
     # Create L matrices first
     Lx = np.zeros((len(bases), len(bases)), dtype=complex)
@@ -100,7 +100,7 @@ def rcis_with_soc(n_filled_orbital, C, S, h, v, bases, atom_coords, atom_charges
     Hel = rci.rci_Hamiltonian(mixed_mol_orbitals, n_filled_orbital, C, h, v)
 
     Hfull = Hel - Hsoc*0.25/137.036**2
-    return [rci.diagonalize(None, Hfull, mixed_mol_orbitals)]
+    return [rci.diagonalize(None, Hfull, mixed_mol_orbitals, n_roots=n_roots)]
     
     # _, E, V, _ = rci.diagonalize(None, Hel)
     # Hsoc_later = V.T.dot(Hsoc.dot(V))
