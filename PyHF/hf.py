@@ -136,10 +136,7 @@ def rhf(atom_charges, atom_coords, net_charge=0, basis_set='sto-3g', C_init=None
     else:
         printer.warning('Energy converged')
 
-    # calculating core energy
-    E_core = np.array([C[:,i].T.dot(h.dot(C[:,i])) for i in range(len(bases))])
-
-    return E, E_core, C, S, h, v, n_orbital, bases
+    return E, C, S, h, v, n_orbital, bases
 
 
 def uhf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto-3g', C_init=None, n_step=500, atol=1e-7, rtol=1e-5, mr=0.5, printer=_default_printer):
@@ -223,8 +220,4 @@ def uhf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto
     else:
         printer.warning('Energy converged')
 
-
-    E_core_a = np.array([C_a[:,i].T.dot(h.dot(C_a[:,i])) for i in range(len(bases))])
-    E_core_b = np.array([C_b[:,i].T.dot(h.dot(C_b[:,i])) for i in range(len(bases))])
-
-    return (E_a, E_b), (E_core_a, E_core_b), (C_a, C_b), S, (n_alpha, n_beta), bases
+    return (E_a, E_b), (C_a, C_b), S, h, v, (n_alpha, n_beta), bases

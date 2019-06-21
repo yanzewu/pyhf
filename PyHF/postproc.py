@@ -8,6 +8,9 @@ from . import rci
 from . import cipostproc
 
 
+def charge2name(c):
+    return ['H','He','Li','Be','B','C','N','O','F'][c-1]
+
 def nuclear_energy(atom_coords, atom_charges):
     E_nu = 0.0
 
@@ -16,16 +19,6 @@ def nuclear_energy(atom_coords, atom_charges):
             E_nu += atom_charges[i]*atom_charges[j]/np.linalg.norm(atom_coords[i]-atom_coords[j])
 
     return E_nu
-
-
-def total_energy_rhf(E, E_core, n_orbital, atom_coords, atom_charges):
-
-    return np.sum((E+E_core)[:n_orbital]) + nuclear_energy(atom_coords, atom_charges)
-
-
-def total_energy_uhf(E, E_core, n, atom_coords, atom_charges):
-
-    return (np.sum((E[0]+E_core[0])[:n[0]]) + np.sum((E[1]+E_core[1])[:n[1]]))/2 + nuclear_energy(atom_coords, atom_charges)
 
 
 def density_matrix_general(C, orbitals):
@@ -43,9 +36,9 @@ def density_matrix(C, n_orbital):
     """
 
     if type(C) is tuple:
-        return density_matrix_general(C[0], range(n_orbital[0])), build_density_mat(C[1], range(n_orbital[1]))
+        return density_matrix_general(C[0], range(n_orbital[0])), density_matrix_general(C[1], range(n_orbital[1]))
     else:
-        return density_matrix_general(C, range(n_orbital))
+        return 2*density_matrix_general(C, range(n_orbital))
 
 
 def muliken(P, atom_charges):
@@ -76,6 +69,61 @@ def muliken(P, atom_charges):
     return np.array(atom_charges) - charge_density
 
 
+def orbital_analysis(restricted, n_a, n_b, C_a, C_b, E_a, E_b, S, h, atom_coords, atom_charges, options):
+    """ Performing routine analysis of HF result.
+    """
+
+    # core energy
+    E_core_a = np.array([C_a[:,i].T.dot(h.dot(C_a[:,i])) for i in range(len(C_a))])
+    E_core_b = np.array([C_b[:,i].T.dot(h.dot(C_b[:,i])) for i in range(len(C_b))])
+
+    E_core_tot = np.sum(E_core_a[:n_a]) + np.sum(E_core_b[:n_b])
+    E_orb_tot = np.sum(E_a[:n_a]) + np.sum(E_b[:n_b])
+    E_nu = nuclear_energy(atom_coords, atom_charges)
+
+    print('Total Electronic Energy =\t%.10g' % ((E_orb_tot + E_core_tot)/2))
+    print('Electronic Core Energy=\t%.10g' % E_core_tot)
+    print('Electronic Columb Energy=\t%.10g' % ((E_orb_tot - E_core_tot)/2))
+    print('Nuclear Energy =\t%.10g' % E_nu)
+    print('Total Energy =\t%.10g' % ((E_orb_tot + E_core_tot)/2 + E_nu))
+
+    if 'orbital-energy' in options:
+
+        print('\nOrbital energies:')
+        print('Index (Status)\tEnergy/Ha')
+
+        if restricted:
+            for i in range(len(C_a)):
+                print('%d (%s)\t%g' % (
+                    i+1, 'occupied' if i < n_a else 'virtual',
+                    E_a[i]))
+        else:
+            occupicy = np.zeros(len(C_a)*2, dtype=int)
+            occupicy[:n_a] = 1
+            occupicy[len(C_a):len(C_a)+n_b] = 1
+            spin = np.zeros(len(C_a)*2)
+            spin[:len(C_a)] = 1
+
+            E = np.concatenate((E_a, E_b))
+            idx = np.argsort(E)
+            for i in idx:
+                print('%d%s (%s)\t%g' % (
+                    i+1 if spin[i] == 1 else i-len(C_a)+1,
+                    'a' if spin[i] == 1 else 'b',
+                    'occupied' if occupicy[i] == 1 else 'virtual',
+                    E[i]))
+
+    if 'charge-muliken' in options or 'muliken' in options:
+
+        D = (density_matrix(C_a, n_a) + density_matrix(C_b, n_b))/2
+
+        print('\nMuliken charge analysis:')
+        print('Atom\tCharge(Muliken)')
+        print('\n'.join(('%d %s\t%.4g'%(i, charge2name(atom_charges[i]), c) for i, c in enumerate(muliken(D*S, atom_charges)))))
+
+    return (E_orb_tot + E_core_tot)/2, E_nu
+
+
 def analyze_hf(hftype, *args, **kwargs):
     if hftype == 'rhf':
         return analyze_rhf(*args, **kwargs)
@@ -85,66 +133,28 @@ def analyze_hf(hftype, *args, **kwargs):
         raise ValueError(hftype)
 
 
-def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options={}):
+def analyze_rhf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options={}):
     """ Analyze and print the result of RHF.
     Args:
-        E, E_core, C, S, n_orbital, bases: The output of rhf();
+        E, C, S, h, v, n_orbital, bases: The output of rhf();
         atom_coords: Nx3 array, coordination of atoms;
         atom_charges: list of atom charges;
         name: name of the system, used in plotting;
         options: optional analysis. Available options are:
             orbital-energy
             muliken-charge
-            density-matrix
             plot
     """
 
-    E_tot = E + E_core  # Total energy of each orbital
-    E_e2 = E - E_core    # Electron-electron energy of each orbital
-    E_ele = np.sum((E+E_core)[:n_orbital])  # Total electronic energy
-    E_nu = nuclear_energy(atom_coords, atom_charges)
-
-    D = density_matrix(C, n_orbital)
-
-    print('Total Electronic Energy =\t%.10g' % E_ele)
-    print('Core Energy=\t%.10g' % np.sum(E_core[:n_orbital]*2))
-    print('2-electron Energy=\t%.10g' % np.sum(E_e2[:n_orbital]))
-    print('Nuclear Energy =\t%.10g' % E_nu)
-    print('Total Energy =\t%.10g' % (E_ele + E_nu))
-
-
-    if 'orbital-energy' in options:
-        # Energy here represents energy of the orbital (2 electrons)
-
-        print('\nOrbital energies:')
-        print('Index (Status)\tOrbital\tCore\t2Electron\tTotal')
-        for i in range(len(bases)):
-            print('%d (%s)\t%g\t%g\t%g\t%g' % (
-                i+1, 'occupied' if i < n_orbital else 'virtual',
-                E[i],
-                E_core[i]*2,
-                E_e2[i],
-                E_tot[i]
-                ))
-
-    if 'density-matrix' in options:
-        P = D*S
-        print('\nDensity matrix:')
-        print('\n'.join(['\t'.join(
-            '%.4e'% P[i,j] for j in range(D.shape[1])
-            ) for i in range(D.shape[0])]))
-
-    if 'charge-muliken' in options:
-        print('\nAtom\tCharge(Muliken)')
-        print('\n'.join(('%d\t%.4g'%(i, c) for i, c in enumerate(muliken(D*S, atom_charges)))))
+    E_ele, E_nu = orbital_analysis(True, n_orbital, n_orbital, C, C, E, E, S, h, atom_coords, atom_charges, options)
 
     if 'plot' in options:
         visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
 
     if 'mp2' in options:
-        from . import mppt
-        Ecorr = mppt.rmp2_energy(n_orbital, C, v, E)
-        print('MP2 Correlation Energy =\t%g' % Ecorr)
+        from . import mopt
+        Ecorr = mopt.rmp2_energy(n_orbital, C, v, E)
+        print('\nMP2 Correlation Energy =\t%g' % Ecorr)
         print('MP2 Total Energy =\t%g' % (E_ele + E_nu + Ecorr))
 
     if 'ci' in options and options['ci']:
@@ -158,77 +168,21 @@ def analyze_rhf(E, E_core, C, S, h, v, n_orbital, bases, atom_coords, atom_charg
         cipostproc.analyze_rci(cioutput, C, bases, E_nu)
 
 
-def analyze_uhf(E, E_core, C, S, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
+def analyze_uhf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
     """Analyze and print the result of RHF.
     Args:
-        E, E_core, C, S, n_orbital, bases: The output of uhf();
+        E, C, S, h, v, n_orbital, bases: The output of uhf();
         atom_coords: Nx3 array, coordination of atoms;
         atom_charges: list of atom charges;
         name: name of the system, used in plotting;
         options: optional analysis. Available options are:
             orbital-energy
             muliken-charge
-            density-matrix
             plot
     """
 
-    n_a, n_b = n_orbital
-
-    E_ele = (np.sum((E[0] + E_core[0])[:n_a]) + np.sum((E[1] + E_core[1])[:n_b]))/2
-    E_nu = nuclear_energy(atom_coords, atom_charges)
-
-    D_a, D_b = density_matrix(C, n_orbital)
-
-    # TODO: Check summations
-    print('Total Electronic Energy =\t%.10g' % E_ele)
-    print('Core Energy=\t%.10g' % np.sum(E_core))
-    print('2-electron Energy=\t%.10g' % (E_ele - np.sum(E_core)))
-    print('Nuclear Energy =\t%.10g' % E_nu)
-    print('Total Energy =\t%.10g' % (E_ele + E_nu))
-
-    if 'orbital-energy' in options:
-        # Summation of orbital energies here will be 2*E_ele
-
-        E = np.concatenate((E[0], E[1]))
-        E_core = np.concatenate((E_core[0], E_core[1]))
-        E_tot = E + E_core
-        E_2e = E - E_core
-        spin = np.zeros(len(bases)*2)
-        spin[:len(bases)] = 1
-        occupicy = np.zeros(len(bases)*2)
-        occupicy[:n_a] = 1
-        occupicy[len(bases):len(bases)+n_b] = 1
-
-        idx = np.argsort(E)
-
-        print('\nOrbital energies:')
-        print('Index (Status)\tOrbital\tCore\t2Electron\tTotal')
-        for j, i in enumerate(idx):
-            print('%d%s (%s)\t%g\t%g\t%g\t%g' % (
-                i+1 if spin[i] == 1 else i-len(bases)+1,
-                'a' if spin[i] == 1 else 'b',
-                'occupied' if occupicy[i] == 1 else 'virtual',
-                E[i],
-                E_core[i],
-                E_2e[i],
-                E_tot[i]
-                ))
-
-    if 'density-matrix' in options:
-
-        print('\nDensity matrix: Alpha')
-        print('\n'.join(['\t'.join(
-            '%.4e'% D_a[i,j] for j in range(D_a.shape[1])
-            ) for i in range(D_a.shape[0])]))
-
-        print('\nDensity matrix: Beta')
-        print('\n'.join(['\t'.join(
-            '%.4e'% D_b[i,j] for j in range(D_b.shape[1])
-            ) for i in range(D_b.shape[0])]))
-
-    if 'charge-muliken' in options:
-        print('\nAtom\tCharge(Muliken)')
-        print('\n'.join(('%d\t%.4g'%(i, c) for i, c in enumerate(muliken((D_a + D_b)*S, atom_charges)))))
+    orbital_analysis(False, n_orbital[0], n_orbital[1], C[0], C[1], E[0], E[1], S, h, atom_coords, atom_charges, options)
+    # TODO: Add spin analysis
             
     if 'plot' in options:
         visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
