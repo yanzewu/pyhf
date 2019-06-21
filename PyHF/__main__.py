@@ -21,6 +21,8 @@ if len(sys.argv) > 1:
             ret = hf.uhf(**kwargs)
         elif hftype == 'rhf':
             ret = hf.rhf(**kwargs)
+        elif hftype == 'rohf':
+            ret = hf.rohf(**kwargs)
         
         postproc.analyze_hf(hftype, *ret, kwargs['atom_coords'], kwargs['atom_charges'], name=name, options=post_opts)
         

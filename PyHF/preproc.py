@@ -48,7 +48,7 @@ def read_input(fp):
         hftype = data['hftype']
 
     try:
-        if hftype == 'uhf':
+        if hftype == 'uhf' or hftype == 'rohf':
             hf_kwargs['n_single_electron'] = data['n_single_electron']
     except KeyError:
         print('Please specify single electron number for UHF')

@@ -58,6 +58,22 @@ def build_fock_u(C, h, v, n_orbital):
     return F_a + h, F_b + h
 
 
+def fock2ro(F_a, F_b, n_a, n_b, Ac, Av, Ao, Bo):
+    
+    F = np.zeros_like(F_a)
+
+    F[:n_b, n_b:n_a] = F_b[:n_b, n_b:n_a]
+    F[n_b:n_a, n_a:] = F_a[n_b:n_a, n_a:]
+    F[:n_b, n_a:] = 0.5*(F_a[:n_b, n_a:] + F_b[:n_b, n_a:])
+    F = F + F.T
+
+    F[:n_b, :n_b] = Ac * F_a[:n_b,:n_b] + (1-Ac) * F_b[:n_b,:n_b]
+    F[n_a:, n_a:] = Av * F_a[n_a:, n_a:] + (1-Av) * F_b[n_a:,n_a:]
+    F[n_b:n_a, n_b:n_a] = Ao * F_a[n_b:n_a, n_b:n_a] + Bo * F_b[n_b:n_a, n_b:n_a]
+
+    return F
+    
+
 def build_density_mat(C, n_orbital):
     """ Generate density matrix D (not P) from state matrix.
     The eigenvalues of C's columns are assumed from smallest to largest.

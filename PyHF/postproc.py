@@ -129,6 +129,8 @@ def analyze_hf(hftype, *args, **kwargs):
         return analyze_rhf(*args, **kwargs)
     elif hftype == 'uhf':
         return analyze_uhf(*args, **kwargs)
+    elif hftype == 'rohf':
+        return analyze_rohf(*args, **kwargs)
     else:
         raise ValueError(hftype)
 
@@ -187,3 +189,18 @@ def analyze_uhf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name
     if 'plot' in options:
         visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
     
+
+def analyze_rohf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
+    """Analyze and print the result of ROHF.
+    Args:
+        E, C, S, h, v, n_orbital, bases: The output of uhf();
+        atom_coords: Nx3 array, coordination of atoms;
+        atom_charges: list of atom charges;
+        name: name of the system, used in plotting;
+        options: optional analysis. Available options are:
+            orbital-energy
+            muliken-charge
+            plot
+    """
+
+    orbital_analysis(False, n_orbital[0], n_orbital[1], C, C, E, E, S, h, atom_coords, atom_charges, options)

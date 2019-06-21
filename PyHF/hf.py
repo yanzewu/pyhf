@@ -221,3 +221,92 @@ def uhf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto
         printer.warning('Energy converged')
 
     return (E_a, E_b), (C_a, C_b), S, h, v, (n_alpha, n_beta), bases
+
+
+def rohf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto-3g', C_init=None, n_step=500, \
+        atol=1e-7, rtol=1e-5, mr=0.5, mix_style='davidson', printer=_default_printer):
+    """ Performing restricted open shell Hartree-Fock calculation.
+    Args:
+        atom_charges: list of atom charges;
+        atom_coords: list of array objects;
+        net_charge: net charge of the molecule;
+        n_single_electron: number of single electrons;
+        basis_set: name of basis set;
+        C_init: tuple (C_alpha, C_beta), initial guess of state matrix;
+        n_step: Maximum calculation step;
+        atol, rtol: controls convergence;
+        mr: initial mixing rate of fock matrix;
+        printer: sprint.SPrinter instance;
+    Returns:
+        E: array of energy, in (alpha, beta) pair
+        E_core: array of core energy, in (alpha, beta) pair
+        C: orbital matrix, in (alpha, beta) pair
+        S: overlap matrix;
+        n_orbital: number of orbitals, in (alpha, beta) pair
+        bases: list of basis.Basis objects
+    """
+
+    printer.warning('Performing restricted open shell Hartree-Fock Calculation\n')
+
+    printer.debug('Nuclear positions:')
+    printer.debug('\n'.join('%d\t%s'%(c,d) for c,d in zip(atom_charges, atom_coords)))
+
+    n_electron = np.sum(atom_charges) - net_charge
+    n_alpha = (n_electron + n_single_electron)//2
+    n_beta = (n_electron - n_single_electron)//2
+
+    assert n_alpha >= 0 and n_beta >= 0, 'No electron'
+    assert n_alpha >= n_beta
+
+    mix_coeff = {
+        'davidson':(0.5, 1.0, 1.0, 0.0),
+        'guest':(0.5, 0.5, 0.5, 0.5),
+        'roothaan':(-0.5, 1.5, 0.5, 0.5),
+        'gvb':(0.5, 0.5, 0.5, 0.0),
+        'canonical':(0.0, 1.0, 1.0, 0.0)
+    }[mix_style]
+
+    printer.info('Total %d atoms, %d alpha orbitals, %d beta orbitals. Assigning basis' % (len(atom_charges), n_alpha, n_beta))
+    bases = basis.construct_basis(basis_set, atom_charges, atom_coords)
+
+    printer.info('Total %d bases assigned. Calculating matrices' % len(bases))
+    S, h, v = create_hf_matrices(bases, atom_coords, atom_charges)
+
+    printer.info('SCF iteration start\n')
+    if C_init is None:
+        E, C = roothaan.diagonal(h, S)  # initial guess
+    else:
+        E = np.zeros(len(bases))
+        C = C_init
+
+    F_a, F_b = roothaan.build_fock_u((C, C), h, v, (n_alpha, n_beta))
+    F = roothaan.fock2ro(F_a, F_b, n_alpha, n_beta, *mix_coeff)
+    E_last = E
+    mr0 = mr
+
+    for n in range(n_step):
+
+        E, C = roothaan.diagonal(F, S)
+
+        printer.debug('[Step %d]\t%.6e' % (n+1, sum(E[:n_alpha])))
+
+        if abs(np.sum(E - E_last)) > atol + rtol*abs(np.sum(E)):
+            mr = mr0 * 0.5**(n//5)
+            F_a, F_b = roothaan.build_fock_u((C, C), h, v, (n_alpha, n_beta))
+            F = F*mr + roothaan.fock2ro(F_a, F_b, n_alpha, n_beta, *mix_coeff)*(1-mr)
+            E_last = E
+        elif mr > 0:
+            mr = 0
+            F_a, F_b = roothaan.build_fock_u((C, C), h, v, (n_alpha, n_beta))
+            F = roothaan.fock2ro(F_a, F_b, n_alpha, n_beta, *mix_coeff)
+            E_last = E
+        else:
+            break
+
+
+    if n == n_step-1:
+        printer.warning('Maximum step (%d) reached, energy not converged' % n)
+    else:
+        printer.warning('Energy converged')
+
+    return E, C, S, h, v, (n_alpha, n_beta), bases
