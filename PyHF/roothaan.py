@@ -83,10 +83,5 @@ def build_density_mat(C, n_orbital):
         n_orbital: number of occupied orbitals;
     """
 
-    D = np.zeros_like(C)
+    return C[:,:n_orbital].dot(C[:,:n_orbital].T)
 
-    for i in range(C.shape[0]):
-        for j in range(C.shape[1]):
-            D[i, j] = sum([C[i, n]*C[j, n] for n in range(n_orbital)])
-
-    return D

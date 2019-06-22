@@ -22,13 +22,7 @@ def nuclear_energy(atom_coords, atom_charges):
 
 
 def density_matrix_general(C, orbitals):
-    D = np.zeros_like(C)
-
-    for i in range(C.shape[0]):
-        for j in range(C.shape[1]):
-            D[i, j] = sum([C[i, n]*C[j, n] for n in orbitals])
-
-    return D
+    return C[:,orbitals].dot(C[:,orbitals].T)
 
 def density_matrix(C, n_orbital):
     """ Returns the density matrix D of state matrix. Simply a wrapper of
@@ -39,6 +33,13 @@ def density_matrix(C, n_orbital):
         return density_matrix_general(C[0], range(n_orbital[0])), density_matrix_general(C[1], range(n_orbital[1]))
     else:
         return 2*density_matrix_general(C, range(n_orbital))
+
+def eff_spin(C_a, C_b, n_a, n_b, S):
+    """ Return <S^2> for UHF.
+    """
+    overlap_mat = C_a[:,:n_a].T.dot(S.dot(C_b[:,:n_b]))
+    tot_overlap = np.linalg.norm(overlap_mat)**2
+    return (n_a-n_b)*(n_a-n_b+2)/4 + n_b - tot_overlap
 
 
 def muliken(P, atom_charges):
@@ -130,7 +131,7 @@ def analyze_hf(hftype, *args, **kwargs):
     elif hftype == 'uhf':
         return analyze_uhf(*args, **kwargs)
     elif hftype == 'rohf':
-        return analyze_rohf(*args, **kwargs)
+        return analyze_uhf(*args, **kwargs)
     else:
         raise ValueError(hftype)
 
@@ -142,10 +143,7 @@ def analyze_rhf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name
         atom_coords: Nx3 array, coordination of atoms;
         atom_charges: list of atom charges;
         name: name of the system, used in plotting;
-        options: optional analysis. Available options are:
-            orbital-energy
-            muliken-charge
-            plot
+        options: optional analysis. See the document for the full list.
     """
 
     E_ele, E_nu = orbital_analysis(True, n_orbital, n_orbital, C, C, E, E, S, h, atom_coords, atom_charges, options)
@@ -177,30 +175,15 @@ def analyze_uhf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name
         atom_coords: Nx3 array, coordination of atoms;
         atom_charges: list of atom charges;
         name: name of the system, used in plotting;
-        options: optional analysis. Available options are:
-            orbital-energy
-            muliken-charge
-            plot
+        options: optional analysis. See the document for the full list.
     """
 
     orbital_analysis(False, n_orbital[0], n_orbital[1], C[0], C[1], E[0], E[1], S, h, atom_coords, atom_charges, options)
-    # TODO: Add spin analysis
+    
+    if C[0] is not C[1]:
+        tot_spin = eff_spin(C[0], C[1], n_orbital[0], n_orbital[1], S)
+        print('\n<S^2>: %.4f' % tot_spin)
             
     if 'plot' in options:
-        visualize.ui_plot('rhf', C, bases, n_orbital, atom_charges, atom_coords, name)
+        visualize.ui_plot('uhf', C, bases, n_orbital, atom_charges, atom_coords, name)
     
-
-def analyze_rohf(E, C, S, h, v, n_orbital, bases, atom_coords, atom_charges, name='', options=[]):
-    """Analyze and print the result of ROHF.
-    Args:
-        E, C, S, h, v, n_orbital, bases: The output of uhf();
-        atom_coords: Nx3 array, coordination of atoms;
-        atom_charges: list of atom charges;
-        name: name of the system, used in plotting;
-        options: optional analysis. Available options are:
-            orbital-energy
-            muliken-charge
-            plot
-    """
-
-    orbital_analysis(False, n_orbital[0], n_orbital[1], C, C, E, E, S, h, atom_coords, atom_charges, options)

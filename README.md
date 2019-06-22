@@ -1,6 +1,6 @@
 # PyHF
 
-Python Hartree-Fock (RHF and UHF) and configuration interaction implementation.
+Python Hartree-Fock (RHF, ROHF and UHF) and configuration interaction implementation.
 
 ## Usage
 
@@ -9,12 +9,12 @@ Python Hartree-Fock (RHF and UHF) and configuration interaction implementation.
 A example input is shown in [h2.json](example/h2.json). General specification of json is
 
 - name;
-- hftype (optional): rhf/uhf;
+- hftype (optional): rhf/rohf/uhf;
 - basis_set: currently only sto-3g;
 - atoms: list of atoms (currently only H to F);
 - coords: atom coords, Nx3 array;
 - charge (optional): net charge of molecule;
-- n_single_electron: required in UHF;
+- n_single_electron: required in ROHF and UHF;
 - n_step (optional);
 - post_analysis (optional): available options:
     - orbital-energy
@@ -41,6 +41,6 @@ A example input is shown in [h2.json](example/h2.json). General specification of
 
 ## Install
 
-Python3 and numpy, scipy is required. Python module _mayavi_ is required to plot.
+Python3 and numpy, scipy is required. Python module _mayavi_ is required only for plotting.
 
 ![](ch4.jpg)

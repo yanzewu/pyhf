@@ -80,7 +80,7 @@ def rhf(atom_charges, atom_coords, net_charge=0, basis_set='sto-3g', C_init=None
         bases: list of Basis object
     """
 
-    printer.warning('Performing restricted Hartree-Fock Calculation\n')
+    printer.warning('Performing restricted Hartree-Fock calculation\n')
 
     printer.debug('Nuclear positions:')
     printer.debug('\n'.join('%d\t%s'%(c,d) for c,d in zip(atom_charges, atom_coords)))
@@ -161,7 +161,7 @@ def uhf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto
         bases: list of basis.Basis objects
     """
 
-    printer.warning('Performing restricted Hartree-Fock Calculation\n')
+    printer.warning('Performing unrestricted Hartree-Fock calculation\n')
 
     printer.debug('Nuclear positions:')
     printer.debug('\n'.join('%d\t%s'%(c,d) for c,d in zip(atom_charges, atom_coords)))
@@ -224,7 +224,7 @@ def uhf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto
 
 
 def rohf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='sto-3g', C_init=None, n_step=500, \
-        atol=1e-7, rtol=1e-5, mr=0.5, mix_style='davidson', printer=_default_printer):
+        atol=1e-7, rtol=1e-5, mr=0.5, mix_style='guest', printer=_default_printer):
     """ Performing restricted open shell Hartree-Fock calculation.
     Args:
         atom_charges: list of atom charges;
@@ -309,4 +309,4 @@ def rohf(atom_charges, atom_coords, net_charge, n_single_electron, basis_set='st
     else:
         printer.warning('Energy converged')
 
-    return E, C, S, h, v, (n_alpha, n_beta), bases
+    return (roothaan.diagonal(F_a, S)[0], roothaan.diagonal(F_b, S)[0]), (C, C), S, h, v, (n_alpha, n_beta), bases
