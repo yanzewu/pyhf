@@ -6,9 +6,8 @@ from . import sprint
 
 def _getcwd():
 
-    import sys
-    import os
-    return os.path.split(sys.argv[0])[0]
+    import os.path
+    return os.path.dirname(__file__)
 
 
 def read_input(fp):
@@ -26,7 +25,7 @@ def read_input(fp):
     data = json.load(fp)
 
     with open('%s/atom.json'%_getcwd(), 'r') as atom_fp:
-        atom_data = json.load(atom_fp)    
+        atom_data = json.load(atom_fp)
 
     # HF args
     atom_charges = [atom_data[a]['charge'] for a in data['atoms']]
@@ -42,7 +41,7 @@ def read_input(fp):
     }
 
     if 'hftype' not in data:
-        total_charge = sum(atom_charges) - hf_kwargs['net_charge']    
+        total_charge = sum(atom_charges) - hf_kwargs['net_charge']
         hftype = 'uhf' if total_charge > 1 and total_charge % 2 == 1 else 'rhf'
     else:
         hftype = data['hftype']
@@ -65,7 +64,7 @@ def read_input(fp):
     # Generating scanning options
     scan_kwargs = None
     if 'scan' in data and data['scan'].get('enable', True) == True:
-       
+
         try:
             data['scan'].pop('enable', None)
         except KeyError:
@@ -85,8 +84,8 @@ def read_input(fp):
                 var_list[n] = v
 
         scan_kwargs = {
-            'repl_coord':repl_coord, 
-            'repl_expr':repl_expr, 
+            'repl_coord':repl_coord,
+            'repl_expr':repl_expr,
             'var_list':var_list
         }
 

@@ -121,17 +121,6 @@ def orbital_angular_momentum(lhs, rhs, atom_coords, atom_charges):
     Returns tuple (Lx, Ly, Lz)
     """
 
-    def _drv_single(a1, p1arr, index):
-        """ Generate derivatives as list of pairs (coeff, newp1arr)
-        """
-        _idx_1 = np.zeros(3, dtype=int)
-        _idx_1[index] = 1
-
-        if p1arr[index] == 0:
-            return [(-2.0*a1, p1arr+_idx_1)]
-        else:
-            return [(p1arr[index], p1arr-_idx_1), (-2.0*a1, p1arr+_idx_1)]
-
     orbinput = integration._standardize_orbital_input(
             lhs.origin, rhs.origin,
             lhs.orientation, rhs.orientation,
@@ -148,8 +137,8 @@ def orbital_angular_momentum(lhs, rhs, atom_coords, atom_charges):
             drvset2 = []
 
             for k in range(3):
-                drvset1.append(_drv_single(a1, p1arr, k))
-                drvset2.append(_drv_single(a2, p2arr, k))
+                drvset1.append(integration._drv_1d(a1, p1arr, k))
+                drvset2.append(integration._drv_1d(a2, p2arr, k))
 
             for k in range(3):
 

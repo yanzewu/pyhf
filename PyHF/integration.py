@@ -87,6 +87,22 @@ def evaluate_2electron_coulomb(lhs1:basis.Basis, lhs2:basis.Basis, rhs1:basis.Ba
     _ele_coul_global_cache[_idx] = s
     return s
 
+
+def evaluate_gradient(lhs:basis.Basis, rhs:basis.Basis):
+
+    orbinput = _standardize_orbital_input(
+                lhs.origin, rhs.origin,
+                lhs.orientation, rhs.orientation,
+                lhs.type_, rhs.type_)
+
+    s = np.zeros(3)
+    for a1,d1 in lhs.data:
+        for a2,d2 in rhs.data:
+            s += d1*d2*_pdp_3d(a1, a2, *orbinput)
+
+    return s
+
+
 def _pp_3d(a1, a2, p1, p2, r12):
 
     return np.product([
@@ -115,6 +131,29 @@ def _pd2p_1d(a1, a2, x12, p1, p2):
     return p2*(p2-1)*_pp_1d(a1,a2,x12,p1,p2-2) - \
         2*a2*(2*p2+1)*_pp_1d(a1,a2,x12,p1,p2) + \
         4*a2**2*_pp_1d(a1,a2,x12,p1,p2+2)
+
+def _pdp_3d(a1, a2, r12, p1, p2):
+    """ Evaluate nabla operator (returns a vector)
+    """
+    ret = np.zeros(3)
+
+    for k in range(3):
+        for dc2, dp2 in _drv_1d(a2, p2, k):
+            ret[k] += dc2 * _pp_3d(a1, a2, p1, dp2, r12)
+    return ret
+
+
+def _drv_1d(a1, p1arr, dim):
+    """ Generate orbital derivatives as list of pairs (coeff, newp1arr)
+    at specific dimension.
+    """
+    _idx_1 = np.zeros(3, dtype=int)
+    _idx_1[dim] = 1
+
+    if p1arr[dim] == 0:
+        return [(-2.0*a1, p1arr+_idx_1)]
+    else:
+        return [(p1arr[dim], p1arr-_idx_1), (-2.0*a1, p1arr+_idx_1)]
 
 
 def _nu_coul_3d(a1, a2, rc, p1, p2, r12):
